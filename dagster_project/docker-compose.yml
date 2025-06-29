@@ -1,0 +1,12 @@
+services:
+  dagster_ecs_core:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./Dockerfile_dagster
+
+  dagster_ecs_user_code:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ./Dockerfile_user_code

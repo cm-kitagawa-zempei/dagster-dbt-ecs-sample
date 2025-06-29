@@ -8,8 +8,8 @@ jaffle_shop:
       private_key: "{{ env_var('DBT_ENV_SECRET_SNOWFLAKE_PRIVATE_KEY', 'dummy') }}"
       private_key_passphrase: "{{ env_var('DBT_ENV_SECRET_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', 'dummy') }}"
       role: SYSADMIN
-      warehouse: X_SMALL_WH
       database: KITAGAWA_TEST_DB
+      warehouse: X_SMALL_WH
       schema: DAGSTER_DBT_SAMPLE
       threads: 1
       client_session_keep_alive: False
