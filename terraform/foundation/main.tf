@@ -92,7 +92,7 @@ resource "aws_security_group" "alb" {
         to_port = 80
         protocol = "tcp"
         cidr_blocks = []
-        prefix_list_ids = ["pl-xxxxxxxxxxxxxxxxx"]  # 必要に応じて設定
+        prefix_list_ids = var.prefix_list_ids
     }
 
     egress {

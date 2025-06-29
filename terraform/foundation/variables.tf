@@ -23,6 +23,12 @@ variable "private_subnet_cidrs" {
     default = ["10.0.3.0/24", "10.0.4.0/24"]
 }
 
+variable "prefix_list_ids" {
+    description = "Prefix list IDs for ALB security group"
+    type = list(string)
+    default = []
+}
+
 variable "dagster_postgres_db" {
     description = "Dagster DB name"
     type = string
