@@ -1,86 +1,72 @@
 # Terraform構成
 
-このディレクトリは、基盤リソースとアプリケーションリソースに分割したTerraform構成です。
+DagsterをECS on Fargateで動かすインフラ構成。基盤とアプリケーションに分離して管理。
 
-## ディレクトリ構成
+## 構成
 
 ```
 terraform/
-├── foundation/          # 基盤リソース（事前作成が必要）
-│   ├── main.tf         # VPC、RDS、ECR、IAM、Secrets Manager等
-│   ├── variables.tf    # 基盤リソース用変数
-│   ├── outputs.tf      # アプリケーション側で使用する出力値
-│   ├── providers.tf    # プロバイダー設定
-│   └── terraform.tfvars.example  # 変数設定例
-├── application/         # アプリケーションリソース
+├── foundation/          # 基盤リソース（先に作成）
+│   ├── main.tf         # VPC、RDS、ECR、IAM、Secrets Manager
+│   ├── variables.tf    # 変数定義
+│   ├── outputs.tf      # 出力値（application側で使用）
+│   └── terraform.tfvars.example
+├── application/         # アプリケーションリソース（後に作成）
 │   ├── main.tf         # ALB、ECS、CloudWatch、Service Discovery
-│   ├── variables.tf    # アプリケーション用変数
-│   ├── outputs.tf      # ALBエンドポイント等の出力値
-│   ├── providers.tf    # プロバイダー設定
-│   └── terraform.tfvars.example  # 変数設定例
-└── README.md           # このファイル
+│   ├── variables.tf    # 変数定義
+│   ├── outputs.tf      # ALBエンドポイント等
+│   └── terraform.tfvars.example
+└── README.md
 ```
 
-## リソース構成
+## ECRイメージ準備
 
-### foundation/ (基盤リソース)
-- VPC・ネットワーク: VPC、サブネット、IGW、NAT Gateway、ルートテーブル
-- セキュリティグループ: 全てのSG定義
-- RDS: PostgreSQLデータベース
-- ECR: Dockerレジストリ
-- IAM: 全てのロール・ポリシー
-- Secrets Manager: DB認証情報、Snowflake認証情報
+foundation作成後、コンテナイメージをECRにプッシュ。
 
-### application/ (アプリケーションリソース)
-- ALB: ロードバランサー、ターゲットグループ、リスナー
-- ECS: クラスター、タスク定義、サービス
-- CloudWatch: ログ群
-- Service Discovery: Cloud Map設定
+```bash
+cd ../dagster_project
+docker compose build
+aws ecr get-login-password | docker login --username AWS --password-stdin <ECR_URL>
+# タグ付け・プッシュ（詳細は dagster_project/README.md 参照）
+```
 
 ## 実行手順
 
 ### 1. AWS認証設定
 
-環境変数でAWS認証を設定：
-
 ```bash
 export AWS_PROFILE=your-profile-name
-export AWS_DEFAULT_REGION=ap-northeast-1
 ```
 
-### 2. 変数ファイルの準備
+### 2. 変数ファイル準備
 
 ```bash
-# foundation用変数ファイル作成
+# foundation
 cp terraform/foundation/terraform.tfvars.example terraform/foundation/terraform.tfvars
-# 必要な値を編集
+# 編集
 
-# application用変数ファイル作成
-cp terraform/application/terraform.tfvars.example terraform/application/terraform.tfvars
-# 必要な値を編集
+# application
+cp terraform/application/terraform.tfvars.example terraform/application/terraform.tfvars  
+# 編集
 ```
 
-### 3. 基盤リソースの作成（先に実行）
+### 3. 基盤リソース作成（先に実行）
 
 ```bash
 cd terraform/foundation
-terraform init
-terraform plan
-terraform apply
+terraform init && terraform apply
 ```
 
-### 4. アプリケーションリソースの作成（後に実行）
+### 4. アプリケーションリソース作成（後に実行）
 
 ```bash
 cd terraform/application
-terraform init
-terraform plan
-terraform apply
+terraform init && terraform apply
 ```
 
-## データソース連携
+## データ連携
 
-`application/`では、`terraform_remote_state`データソースを使用して`foundation/`の出力値を参照しています：
+applicationはfoundationの出力値を参照
 
 ```hcl
 data "terraform_remote_state" "foundation" {
@@ -93,21 +79,19 @@ data "terraform_remote_state" "foundation" {
 
 ## 必要な変数
 
-### foundation/で必要な変数
-- `prefix`: リソース名プレフィックス（デフォルト: cm-kitagawa）
-- `dagster_postgres_db`: PostgreSQLデータベース名
-- `dagster_postgres_user`: PostgreSQLユーザー名
-- `dagster_postgres_password`: PostgreSQLパスワード（機密情報）
-- `dbt_env_secret_snowflake_account`: Snowflakeアカウント
-- `dbt_env_secret_snowflake_user`: Snowflakeユーザー
-- `dbt_env_secret_snowflake_private_key`: Snowflake秘密鍵（機密情報）
-- `dbt_env_secret_snowflake_private_key_passphrase`: 秘密鍵パスフレーズ（機密情報）
+### foundation/
 
-### application/で必要な変数
-- `prefix`: リソース名プレフィックス（デフォルト: cm-kitagawa）
+- `prefix`: リソース名プレフィックス
+- `dagster_postgres_*`: PostgreSQL設定
+- `dbt_env_secret_snowflake_*`: Snowflake認証情報
+
+### application/
+
+- `prefix`: リソース名プレフィックス
 
 ## 注意事項
 
-1. 実行順序: 必ずfoundation → applicationの順で実行してください
-2. 状態ファイル: foundation/terraform.tfstateが存在することを確認してからapplicationを実行してください
-3. 機密情報: パスワードや秘密鍵は`terraform.tfvars`ファイルで管理し、バージョン管理に含めないでください
+1. 実行順序: foundation → application
+2. 状態ファイル: foundation/terraform.tfstate存在確認
+3. 機密情報: terraform.tfvarsで管理（バージョン管理対象外）
+4. 削除順序: application → foundation
