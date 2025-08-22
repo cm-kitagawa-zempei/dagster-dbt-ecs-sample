@@ -95,6 +95,14 @@ resource "aws_security_group" "alb" {
         prefix_list_ids = var.prefix_list_ids
     }
 
+    ingress {
+        from_port = 443
+        to_port = 443
+        protocol = "tcp"
+        cidr_blocks = []
+        prefix_list_ids = var.prefix_list_ids
+    }
+
     egress {
         from_port = 0
         to_port = 0
@@ -354,4 +362,15 @@ resource "aws_secretsmanager_secret_version" "dagster_postgres" {
         username = var.dagster_postgres_user
         password = var.dagster_postgres_password
     })
+}
+
+# SSL Certificate (ACM)
+resource "aws_acm_certificate" "main" {
+    count           = var.domain_name != "" ? 1 : 0
+    domain_name     = var.domain_name
+    validation_method = "DNS"
+
+    lifecycle {
+        create_before_destroy = true
+    }
 }

@@ -73,3 +73,9 @@ output "dbt_snowflake_secret_arn" {
     description = "DBT Snowflake secret ARN"
     value = aws_secretsmanager_secret.dbt_env_secret_snowflake.arn
 }
+
+# SSL Certificate
+output "ssl_certificate_arn" {
+    description = "SSL certificate ARN"
+    value = var.domain_name != "" ? aws_acm_certificate.main[0].arn : null
+}

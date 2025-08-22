@@ -66,3 +66,9 @@ variable "dbt_env_secret_snowflake_private_key_passphrase" {
     type = string
     sensitive = true
 }
+
+variable "domain_name" {
+    description = "Domain name for SSL certificate"
+    type = string
+    default = ""
+}
